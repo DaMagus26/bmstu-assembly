@@ -1,7 +1,6 @@
 section .data
-	A dw 0025h
-	B dd -35
-	C db 2500h
+	F1 dw 65535
+	F2 dd 65535
 
 	ExitMsg db "Press Enter to Exit", 10
 	lenExit equ $-ExitMsg
@@ -11,6 +10,8 @@ section .bss
 section .text
 	global _start
 _start:
+	add word [F1], 1
+	add dword [F2], 1
 	; write
 	mov eax, 4
 	mov ebx, 1

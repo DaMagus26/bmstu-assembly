@@ -2,6 +2,7 @@ section .data
 	A dw 25
 	B dd -35
 	C db "Mikhail Ovakimyan", 10
+	D db "Михаил Овакимян", 10
 
 	ExitMsg db "Press Enter to Exit", 10
 	lenExit equ $-ExitMsg

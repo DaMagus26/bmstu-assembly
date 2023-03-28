@@ -62,7 +62,33 @@ _start:
     mov [B], rax
 
     ; calculating
+    mov rbx, [A]
+    sub rbx, [B]
 
+    mov rax, [B]
+    cdq
+    mov rcx, 4
+    idiv rcx
+    add rax, [A]
+    imul rax, [A]
+
+    cdq
+    ; mov rbx, 2  ; delete me
+    idiv dword rbx
+
+    ; result int to str conversion
+    ; mov rax, rbx
+
+    cdq
+    call IntToStr64
+    ; cmp ebx, 0
+    ; jne Error
+    mov rdx, rax
+
+    ; print the result
+    mov rax, 1
+    mov rdi, 1
+    syscall
 
 Exit:
     ; exit

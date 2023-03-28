@@ -62,19 +62,18 @@ _start:
     mov [B], rax
 
     ; calculating
-    mov rbx, [A]
-    sub rbx, [B]
+    mov bx, [A]
+    sub bx, [B]
 
-    mov rax, [B]
+    mov ax, [B]
     cdq
-    mov rcx, 4
-    idiv rcx
-    add rax, [A]
-    imul rax, [A]
+    mov cx, 4
+    idiv cx
+    add ax, [A]
+    imul ax, [A]
 
     cdq
-    ; mov rbx, 2  ; delete me
-    idiv dword rbx
+    idiv dword bx
 
     ; result int to str conversion
     ; mov rax, rbx

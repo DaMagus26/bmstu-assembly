@@ -76,12 +76,8 @@ _start:
     idiv dword bx
 
     ; result int to str conversion
-    ; mov rax, rbx
-
     cdq
     call IntToStr64
-    ; cmp ebx, 0
-    ; jne Error
     mov rdx, rax
 
     ; print the result

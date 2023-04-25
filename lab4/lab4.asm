@@ -1,219 +1,253 @@
-%include "../lib/lib64.asm"
+%include "../lib/lib.asm"
 
 section .data
-    spaceStr        db ' '
-    spaceStrLen     equ $-spaceStr
+    ExitMsg db 'Line with zero sum is found', 0xA ; выводимое сообщение
+    Space db '  '
+    NewLine: db 0xA
+    lenExit equ $-ExitMsg
 
-    newLineStr      db 10
-    newLineStrLen   equ $-spaceStr
+    StartMsg db 'Input matrix looks following : ', 0xA ; выводимое сообщение
+    lenStart equ $-StartMsg
 
-    inputNMsg       db   'Enter number of rows (max 10): '
-    inputNMsgLen    equ  $ - inputNMsg
+    ResMsg db 'Result matrix looks following : ', 0xA ; выводимое сообщение
+    lenRes equ $-ResMsg
 
-    inputMMsg       db   'Enter number of cols (max 10): '
-    inputMMsgLen    equ  $ - inputMMsg
+    InputMsg db 'Input matrix from keyboard(along the lines) : ', 0xA ; выводимое сообщение
+    lenInput equ $-InputMsg
 
-    inputMatMsg     db   'Enter n^2 elements of matrix (rows-wise):', 10
-    inputMatMsgLen  equ  $ - inputMatMsg
+    InputLineMsg db 'Input element of the line one by one from keyboard : ', 0xA ; выводимое сообщение
+    lenLineInput equ $-InputLineMsg
 
-    errorMsg        db   'Invalid input', 10
-    errorMsgLen     equ  $ - errorMsg
 
 section .bss
-    inputStr        resb  10
-    inputStrLen     resw  1
-    N               resw  1
-    M               resw  1
-    Matrix          resw  100
+    matrix resd 20
+    OutBuf resb 2 ; буфер для выводимой строки, он должен быть 2 или 4
+                  ;должен быть 4, но пока оставим костыль, можно ввожить только 0 
+    lenOut equ $-OutBuf
+    InBuf resd 2 ; буфер для вводимой строки
+    lenIn equ $-InBuf
 
 section .text
     global _start
 
 _start:
-    ; ===== GETTING USER INPUT =====
-    ; Prompt for N
-    mov rax, 1
-    mov rdi, 1
-    mov rsi, inputNMsg
-    mov rdx, inputNMsgLen
-    syscall
+    call PrintInputMsg
+    call PrintInputLineMsg
 
-    ; Input of N
-    mov rax, 0
-    mov rdi, 0
-    mov rsi, inputStr
-    mov rdx, inputStrLen
-    syscall
-
-    ; conversion of N
-    call StrToInt64
-    cmp ebx, 0
-    jne error
-    mov [N], eax
+    mov rbx, 0 ; смещение элемента столбца в строке
+    mov rcx, 5 ; количество строк
+cycleInput1:; мы проходимся по столбцам
+    push rcx ; сохраняем счетчик
+    mov rcx, 3 ; счетчик элементов в столбце - 1
     
-    ; Prompt for M
-    mov rax, 1
-    mov rdi, 1
-    mov rsi, inputMMsg
-    mov rdx, inputMMsgLen
-    syscall
-
-    ; Input of M
-    mov rax, 0
-    mov rdi, 0
-    mov rsi, inputStr
-    mov rdx, inputStrLen
-    syscall
-
-    ; conversion of M
-    call StrToInt64
-    cmp ebx, 0
-    jne error
-    mov [M], eax
-
-    ; Prompt for matrix
-    mov rax, 1
-    mov rdi, 1
-    mov rsi, inputMatMsg
-    mov rdx, inputMatMsgLen
-    syscall
-
-    ; Populating matrix
-    mov ax, [N]
-    mul word [M]
-    cwde
-    cdqe
-    mov rcx, rax
-    push rcx  ; saving rcx for future use in print loop
-
-    mov rbx, 0
-matrix_input_loop:
-    ; print the result
-    push rcx
-
-    mov rax, 0
-    mov rdi, 0
-    mov rsi, inputStr
-    mov rdx, inputStrLen
-    syscall
-
+    push rcx ; сохраняем счетчик
     push rbx
+    call InputNumber
 
+    mov rdi, InBuf; Pass address of input buffer to StrToInt64
     call StrToInt64
-    cmp ebx, 0
-    jne error
-
-    pop rbx 
-    mov [Matrix + rbx * 2], eax
-    inc rbx
-   
+    cmp rbx, 0
+    jne 0
+    pop rbx
+    mov [rbx + matrix], rax;content of InBuf goes to rax
     pop rcx
-    loop matrix_input_loop
 
-    ; printing matrix
-    pop rcx  ; retrieving rcx, that was saved before first loop  // TODO save rcx in a separate variable
-    mov rbx, 0
-matrix_output_loop:
-    push rcx
-    ; push rbx
+    mov rsi, 4 ; смещение для другого столбца, но все той-же строки
+cycleInput2:
+    push rcx ; сохраняем счетчик
+    push rsi
+    push rbx
+    
+    call InputNumber
 
-    mov eax, [Matrix + rbx * 2]
+    mov rdi, InBuf; Pass address of input buffer to StrToInt64
+    call StrToInt64
+    cmp rbx, 0
+    jne 0 ;content of InBuf goes to rax
+    pop rbx
+    pop rsi
+    mov [rbx + rsi + matrix], rax
+
+    add rsi, 4; смещение для другого столбца, но все той-же строки
+    pop rcx
+    loop cycleInput2 ; цикл по элементам столбца
+
+    ; print line element's expectation
+    call PrintInputLineMsg
+
+    pop rcx
+    add rbx, 16 ; перешли к следующей строке
+    dec rcx
+    jnz cycleInput1 ; цикл по столбцам
+
+    mov rax, 1
+    mov rdi, 1
+    mov rsi, StartMsg
+    mov rdx, lenStart
+    syscall
+
+    mov rbx, 0 ; смещение элемента столбца в строке
+    mov rcx, 5 ; количество строк
+; мы проходимся по столбцам
+cyclePrint1: 
+    push rcx ; сохраняем счетчик
+    mov rcx, 3 ; счетчик элементов в столбцов - 1
+    
+    push rcx ; сохраняем счетчик
+    push rsi
+
+    mov rax, [rbx + matrix]
+    mov rsi, OutBuf
     call IntToStr64
-break:
-    mov rdx, rax
+
+    ; print the number    
+    call PrintNumber
+
+    call PrintSpace
+
+    pop rsi
+    pop rcx
+
+    mov rsi, 4 ; смещение для другого столбца, но все той-же строки
+cyclePrint2:
+    push rcx ; сохраняем счетчик
+    push rsi
+
+    mov rax, [rbx + rsi + matrix]
+    mov rsi, OutBuf
+    call IntToStr64
+
+    call PrintNumber
+
+    call PrintSpace
+
+    pop rsi
+
+    add rsi, 4; смещение для другого столбца, но все той-же строки
+    pop rcx
+    loop cyclePrint2 ; цикл по элементам столбца
+
+    call PrintNewLine
+    pop rcx
+
+    add rbx, 16 ; перешли к следующей строке
+    dec rcx
+    jnz cyclePrint1 ; цикл по столбцам
 
     mov rax, 1
     mov rdi, 1
+    mov rsi, ResMsg
+    mov rdx, lenRes
     syscall
 
-    ; pop rbx 
-    inc rbx
+    mov rbx, 0 ; смещение элемента столбца в строке
+    mov rcx, 5 ; количество строк
+cycle1:
+    push rcx ; сохраняем счетчик
+    mov rcx, 3 ; счетчик элементов в строке - 1
+    mov rax, [rbx + matrix]; будем использовать как сумму элементов для строки
+    mov rsi, 4 ; проходимся по элементам строки
+cycle2:
+    add rax, [rbx + rsi + matrix]
+    add rsi, 4 ; проходимся по элементам строки
+    loop cycle2 ; цикл по элементам столбца
+
+    ;если сумма равна нулю, то мы сразу переходим к новой строке, иначе мы печатаем строку
+    cmp eax, 0  ; не знаю почему,но во внутреннем представлении rax когда он должен быть равен нулю,но он ему совсем не равен
+                ;пришлось заменять на eax, не приятно конечно,но терпимо
+    je if_zero
+
+    mov rcx, 3 ; счетчик элементов в столбце
+    ;здесь нужно сделать printf всей строки
+    push rcx ; сохраняем счетчик
+    push rsi
+    mov rax, [rbx + matrix]
+    mov rsi, OutBuf
+    call IntToStr64
+
+    call PrintNumber
+    call PrintSpace
+
+    pop rsi
     pop rcx
 
-    loop matrix_output_loop
+    mov rsi, 4 ; смещение для другого столбца, но все той-же строки
+cyclePrintOut:
+    push rcx ; сохраняем счетчик
+    push rsi
 
+    mov rax, [rbx + rsi + matrix]
+    mov rsi, OutBuf
+    call IntToStr64
 
-    ; ===== AUXILIARY PROCEDURES =====
+    call PrintNumber
+    call PrintSpace
+
+    pop rsi
+
+    add rsi, 4; смещение для другого столбца, но все той-же строки
+    pop rcx
+   loop cyclePrintOut
+
+    call PrintNewLine
+
+if_zero:
+    pop rcx ; восстановили счетчик
+    add rbx, 16 ; перешли к следующей строке
+    dec rcx
+    
+    jnz cycle1 ; цикл по строкам
+
 exit:
-    mov rax, 60
-    xor rdi, rdi
-    syscall
+    mov rax, 60; системная функция 60 (exit)
+    xor rdi, rdi; return code 0
+    syscall; вызов системной функции
 
-error:
+
+PrintInputMsg:
     mov rax, 1
     mov rdi, 1
-    mov rsi, errorMsg
-    mov rdx, errorMsgLen
-    syscall
-    jmp exit
-
-printSpace:
-; Saving register values, so the wil not be affected by procedure call
-    push rax
-    push rdi
-    push rsi
-    push rdx
-
-    mov rax, 1
-    mov rdi, 1
-    mov rsi, spaceStr
-    mov rdx, spaceStrLen
+    mov rsi, InputMsg
+    mov rdx, lenInput
     syscall
     ret
 
-    ; Getting saved values back to register
-    pop rdx
-    pop rsi
-    pop rdi
-    pop rax
-    ret
-
-printNewLine:
-    ; Saving register values, so the wil not be affected by procedure call
-    push rax
-    push rdi
-    push rsi
-    push rdx
-
+PrintInputLineMsg: ; print line element's expectation
     mov rax, 1
     mov rdi, 1
-    mov rsi, newLineStr
-    mov rdx, newLineStrLen
+    mov rsi, InputLineMsg
+    mov rdx, lenLineInput
     syscall
-
-    ; Getting saved values back to register
-    pop rdx
-    pop rsi
-    pop rdi
-    pop rax
     ret
 
-printMatrix:
-    mov ecx, eax
-    push rcx
-
-    mov rbx, 0
-    mov eax, [Matrix]
-matrix_loop:
-    ; print the result
-    push rcx
-
-    mov rax, 0
-    mov rdi, 0
-    mov rsi, inputStr
-    mov rdx, inputStrLen
+PrintSpace:    
+    mov rax, 1
+    mov rdi, 1
+    mov rsi, Space
+    mov rdx, 1
     syscall
+    ret
 
-    push rbx
+PrintNumber:
+    mov rax, 1
+    mov rdi, 1
+    mov rsi, OutBuf
+    mov rdx, lenOut
+    syscall
+    ret
 
-    call StrToInt64
-    cmp ebx, 0
-    jne error
-    mov [Matrix + 2 + rbx * 2], eax
+PrintNewLine:
+    mov rax, 1
+    mov rdi, 1
+    mov rsi, NewLine
+    mov rdx, 1
+    syscall
+    ret
 
-    pop rbx 
-    inc rbx
-   
-    pop rcx
-
-    loop matrix_loop
+InputNumber:
+    mov rax, 0 ; System call 0 for read
+    mov rdi, 0 ; File descriptor for stdin
+    mov rsi, InBuf ; Address of input buffer
+    mov rdx, lenIn ; Maximum length to read
+    syscall
+    ret

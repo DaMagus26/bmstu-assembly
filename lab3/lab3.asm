@@ -12,6 +12,9 @@ section .data
 
     errorMsg db 'Invalid input', 10
     errorMsgLen equ $ - errorMsg
+
+    zeroDivisionMsg db 'Error: Zero Division', 10
+    zeroDivisionMsgLen equ $ - zeroDivisionMsg
 section .bss
     X resw 1
     Y resw 1
@@ -64,6 +67,16 @@ _start:
     jne Error
 
     mov [Y], rax
+
+    ; Checking if X equals Y
+    push rax
+    push rdx
+    movsx eax, word [X]
+    movsx edx, word [Y]
+    cmp eax, edx
+    je zeroDivisionError
+    pop rdx
+    pop rax
 
     ; input A prompt
     mov rax, 1
@@ -146,6 +159,15 @@ Error:
     mov rdi, 1
     mov rsi, errorMsg
     mov rdx, errorMsgLen
+    syscall
+
+    jmp Exit
+
+zeroDivisionError:
+    mov rax, 1
+    mov rdi, 1
+    mov rsi, zeroDivisionMsg
+    mov rdx, zeroDivisionMsgLen
     syscall
 
     jmp Exit
